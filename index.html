@@ -100,18 +100,12 @@
     .account-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;   /* 左侧提示已移除，按钮继续靠右 */
       gap: 12px;
       margin-bottom: 18px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--line);
       font-size: 12px;
-    }
-    .account-hint {
-      color: var(--muted);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
     .auth-btn {
       flex: 0 0 auto;
@@ -641,7 +635,6 @@
 <body>
   <main class="app">
     <div class="account-row">
-      <span class="account-hint" id="syncHint">未登录 · 数据仅保存在本机</span>
       <div class="top-menu">
         <button class="auth-btn" id="authBtn" type="button">登录</button>
         <button class="icon-button" id="menuBtn" type="button" aria-label="菜单" aria-haspopup="menu">
@@ -817,7 +810,6 @@
       // ===== DOM 引用 =====
       const $ = function (id) { return document.getElementById(id); };
       const dom = {
-        syncHint: $('syncHint'),
         authBtn: $('authBtn'),
         menuBtn: $('menuBtn'),
         menuOverlay: $('menuOverlay'),
@@ -1238,10 +1230,8 @@
       function updateAuthUI() {
         if (currentUser) {
           dom.authBtn.textContent = (currentUser.email || '账户').split('@')[0];
-          dom.syncHint.textContent = '云端同步已开启';
         } else {
           dom.authBtn.textContent = '登录';
-          dom.syncHint.textContent = '未登录 · 数据仅保存在本机';
         }
       }
 
@@ -1476,7 +1466,6 @@
         bindEvents();
 
         if (!supabaseClient) {
-          dom.syncHint.textContent = '云端未连接 · 数据仅保存在本机';
           console.log('健身打卡 已启动（本地模式）');
           return;
         }
