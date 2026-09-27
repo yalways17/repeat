@@ -1,0 +1,1482 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f2f5ee">
+  <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png?v=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?v=1">
+  <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png?v=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=1">
+  <link rel="manifest" href="./site.webmanifest">
+  <!-- ?v=1：图标改了但文件名没变，加版本号才能绕开浏览器对 favicon 的长期缓存 -->
+  <title>健身打卡</title>
+  <style>
+    /* ===== 浅色（默认） ===== */
+    :root {
+      color-scheme: light;
+      --bg: #f2f5ee;
+      --surface: #ffffff;
+      --surface-2: #e6ece0;
+      --text: #161d12;
+      --muted: #66705f;
+      --line: #d5ddcc;
+      --accent: #57981f;
+      --accent-strong: #47831a;
+      --accent-soft: #e2f2cf;
+      --accent-ink: #23400a;
+      --danger: #c0392b;
+      --shadow: 0 18px 45px rgba(28, 48, 20, .10);
+      --overlay: rgba(24, 32, 18, .45);
+    }
+    /* ===== 深色 ===== */
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0d0f0f;
+      --surface: #151817;
+      --surface-2: #1d211f;
+      --text: #f2f4ef;
+      --muted: #a7aea9;
+      --line: #303632;
+      --accent: #9de260;
+      --accent-strong: #b8ef86;
+      --accent-soft: #26371b;
+      --accent-ink: #e7ffd1;
+      --danger: #ff8c78;
+      --shadow: 0 22px 70px rgba(0, 0, 0, .24);
+      --overlay: rgba(0, 0, 0, .62);
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    button, textarea, input { font: inherit; }
+    button { color: inherit; }
+    .hidden { display: none !important; }
+    [hidden] { display: none !important; }
+    .app {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: max(24px, env(safe-area-inset-top)) 20px max(120px, calc(28px + env(safe-area-inset-bottom)));
+    }
+    .account-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .account-hint {
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .auth-btn {
+      flex: 0 0 auto;
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 13px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: border-color .16s ease;
+    }
+    .auth-btn:hover { border-color: var(--accent); }
+    .top-menu {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-button {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color .16s ease;
+    }
+    .icon-button:hover { border-color: var(--accent); }
+    .icon-button svg { width: 19px; height: 19px; }
+    .topline {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+    .day-heading { margin: 0; }
+    .day-heading strong {
+      display: block;
+      font-family: "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+      font-size: clamp(30px, 7vw, 46px);
+      line-height: 1.04;
+      letter-spacing: -.04em;
+    }
+    .day-heading span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .progress-number {
+      color: var(--accent-strong);
+      font-size: 27px;
+      font-weight: 750;
+      line-height: 1;
+      letter-spacing: -.03em;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .progress-number.is-rest { color: var(--muted); font-weight: 650; }
+    .progress-track {
+      height: 5px;
+      overflow: hidden;
+      background: var(--surface-2);
+      margin-bottom: 22px;
+    }
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      background: var(--accent);
+      transition: width .25s ease;
+    }
+    .plan { display: grid; gap: 12px; }
+    .rest-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 30px 22px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .rest-card strong {
+      display: block;
+      font-family: "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+      font-size: 19px;
+      letter-spacing: -.02em;
+    }
+    .rest-card p {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .exercise {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .exercise-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .exercise-index {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      font-variant-numeric: tabular-nums;
+    }
+    .exercise-main { min-width: 0; flex: 1; }
+    .exercise h2 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.35;
+      letter-spacing: -.015em;
+    }
+    .prescription {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .sets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .set-btn {
+      min-width: 50px;
+      min-height: 43px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .set-btn[aria-pressed="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent-ink);
+    }
+    .set-btn[aria-pressed="true"]::before { content: "✓ "; }
+    .sequence {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .sequence .set-btn {
+      min-width: 0;
+      padding: 8px 6px;
+      line-height: 1.2;
+    }
+    .section-title {
+      margin: 31px 0 11px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .note {
+      width: 100%;
+      min-height: 112px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 15px;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+    }
+    .note:focus { border-color: var(--accent); }
+    .note::placeholder { color: var(--muted); opacity: .78; }
+    .note:disabled { opacity: .45; cursor: not-allowed; }
+    .finish-row {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      padding: 12px max(20px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-bottom));
+      background: color-mix(in srgb, var(--bg) 90%, transparent);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+    }
+    .finish-inner {
+      width: min(720px, 100%);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-copy { flex: 1; min-width: 0; }
+    .status-copy strong { display: block; font-size: 14px; }
+    .status-copy span { color: var(--muted); font-size: 12px; }
+    .finish-btn {
+      min-height: 48px;
+      border: 0;
+      border-radius: 9px;
+      padding: 0 22px;
+      background: var(--accent);
+      color: #102004;
+      font-weight: 780;
+      cursor: pointer;
+    }
+    .finish-btn:disabled { opacity: .38; cursor: default; }
+    .history-list { display: grid; gap: 9px; }
+    .history-empty {
+      padding: 17px 0;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .history-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .history-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent-ink);
+      font-weight: 800;
+    }
+    .history-item strong { display: block; }
+    .history-item small { color: var(--muted); overflow-wrap: anywhere; }
+    .history-right { display: flex; align-items: center; gap: 10px; }
+    .history-percent { color: var(--accent-strong); font-weight: 750; font-variant-numeric: tabular-nums; }
+    .h-del {
+      border: 0;
+      background: none;
+      padding: 6px 2px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      transition: color .16s ease;
+    }
+    .h-del:hover { color: var(--danger); }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 91px;
+      z-index: 60;
+      transform: translate(-50%, 16px);
+      opacity: 0;
+      pointer-events: none;
+      background: var(--text);
+      color: var(--bg);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      transition: opacity .2s ease, transform .2s ease;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    /* ===== 右上角菜单 ===== */
+    .menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      display: none;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px 14px;
+      background: rgba(0, 0, 0, .18);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .menu-overlay.open { display: flex; }
+    .menu-panel {
+      min-width: 212px;
+      max-width: 260px;
+      padding: 16px 16px 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      animation: menuIn .3s cubic-bezier(.22, 1, .36, 1);
+      transform-origin: top right;
+    }
+    @keyframes menuIn {
+      0% { opacity: 0; transform: scale(.92) translateY(-6px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .menu-panel .menu-close {
+      float: right;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .menu-panel .menu-close:hover { background: var(--surface-2); color: var(--text); }
+    .menu-panel .menu-close svg { width: 16px; height: 16px; }
+    .menu-section { margin-bottom: 14px; }
+    .menu-section .menu-label {
+      margin-bottom: 8px;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .menu-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 8px;
+      border-radius: 10px;
+      font-size: .88rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .15s ease;
+    }
+    .menu-option:hover { background: var(--surface-2); }
+    .menu-option .menu-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+    }
+    .menu-option .menu-icon svg { width: 19px; height: 19px; }
+    .menu-option .radio {
+      position: relative;
+      flex: 0 0 auto;
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--line);
+      border-radius: 50%;
+      transition: border-color .15s;
+    }
+    .menu-option .radio.active { border-color: var(--accent); }
+    .menu-option .radio.active::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .menu-about {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    /* ===== 弹窗（账户） ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
+      background: var(--overlay);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-content {
+      width: min(380px, 100%);
+      max-height: 100%;
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px 22px;
+      box-shadow: var(--shadow);
+    }
+    .modal-title {
+      font-family: "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+    .modal-sub { margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .auth-form { display: grid; gap: 10px; margin-top: 18px; }
+    .auth-form input {
+      min-height: 46px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 13px;
+      background: var(--surface-2);
+      color: var(--text);
+      outline: none;
+    }
+    .auth-form input:focus { border-color: var(--accent); }
+    .auth-form input::placeholder { color: var(--muted); opacity: .72; }
+    .auth-submit {
+      min-height: 46px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #102004;
+      font-weight: 780;
+      cursor: pointer;
+    }
+    .auth-submit:disabled { opacity: .45; cursor: default; }
+    .auth-submit.ghost {
+      background: none;
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .auth-switch {
+      justify-self: center;
+      border: 0;
+      padding: 4px 0;
+      background: none;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .auth-switch:hover { color: var(--text); }
+    .auth-status {
+      min-height: 18px;
+      font-size: 12.5px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+    .auth-status.error { color: var(--danger); }
+    .auth-status.success { color: var(--accent-strong); }
+    .auth-account {
+      display: grid;
+      gap: 4px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-2);
+    }
+    .auth-account-email { font-weight: 700; overflow-wrap: anywhere; }
+    .auth-account-sub { color: var(--muted); font-size: 12px; }
+    .modal-close { margin-top: 14px; text-align: center; }
+    .modal-close button {
+      border: 0;
+      background: none;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .modal-close button:hover { color: var(--text); }
+
+    @media (max-width: 480px) {
+      .app { padding-left: 14px; padding-right: 14px; }
+      .topline { margin-top: 2px; }
+      .exercise { padding: 15px; border-radius: 11px; box-shadow: none; }
+      .rest-card { padding: 26px 18px; }
+      .exercise h2 { font-size: 16px; }
+      .sequence { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .status-copy span { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+  <script>
+    // 首次绘制前先定好主题，避免闪一下再变色
+    (function () {
+      var pref = 'system';
+      try { pref = localStorage.getItem('fitness_appearance_v1') || 'system'; } catch (e) { /* 忽略 */ }
+      var dark = pref === 'dark' ||
+        (pref !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', dark ? '#0d0f0f' : '#f2f5ee');
+    }());
+  </script>
+</head>
+<body>
+  <main class="app">
+    <div class="account-row">
+      <span class="account-hint" id="syncHint">未登录 · 数据仅保存在本机</span>
+      <div class="top-menu">
+        <button class="auth-btn" id="authBtn" type="button">登录</button>
+        <button class="icon-button" id="menuBtn" type="button" aria-label="菜单" aria-haspopup="menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6.5" x2="20" y2="6.5"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17.5" x2="20" y2="17.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="topline">
+      <h1 class="day-heading"><strong id="dayTitle">周一</strong><span id="dayFocus">胸 · 三头</span></h1>
+      <div class="progress-number" id="progressNumber">0%</div>
+    </div>
+    <div class="progress-track" role="progressbar" aria-label="今日训练完成进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progressFill"></div></div>
+
+    <section class="plan" id="plan" aria-live="polite"></section>
+
+    <h2 class="section-title">训练备注</h2>
+    <textarea class="note" id="note" maxlength="500" placeholder="今天的状态、动作感受、需要调整的地方……"></textarea>
+  </main>
+
+  <div class="finish-row" id="finishRow">
+    <div class="finish-inner">
+      <div class="status-copy"><strong id="statusStrong">还没开始</strong><span id="statusDetail">完成任意一组后即可记录</span></div>
+      <button class="finish-btn" type="button" id="finishBtn" disabled>记录本次</button>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite">已记录</div>
+
+  <!-- ===== 账户弹窗 ===== -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-content">
+      <div class="modal-title" id="authTitle">登录 健身打卡</div>
+      <div class="modal-sub" id="authSub">登录后，训练记录会在设备间同步。</div>
+      <div class="auth-form" id="authForm">
+        <input type="email" id="authEmail" autocomplete="email" placeholder="邮箱" maxlength="254">
+        <input type="password" id="authPassword" autocomplete="current-password" placeholder="密码（至少 6 位）" minlength="6" maxlength="72">
+        <button class="auth-submit" id="authSubmitBtn" type="button">登录</button>
+        <button class="auth-switch" id="authSwitchBtn" type="button">还没有账户？注册</button>
+        <div class="auth-status" id="authStatus"></div>
+      </div>
+      <div class="auth-form hidden" id="authAccountView">
+        <div class="auth-account">
+          <div class="auth-account-email" id="authAccountEmail"></div>
+          <div class="auth-account-sub">云端同步已开启</div>
+        </div>
+        <button class="auth-submit ghost" id="authSignOutBtn" type="button">退出登录</button>
+        <button class="auth-switch" id="authCloseBtn" type="button">关闭</button>
+      </div>
+      <div class="modal-close" id="authGuestCloseWrap"><button id="authGuestCloseBtn" type="button">稍后再说</button></div>
+    </div>
+  </div>
+
+  <!-- ===== 右上角菜单 ===== -->
+  <div class="menu-overlay" id="menuOverlay">
+    <div class="menu-panel">
+      <button class="menu-close" id="menuClose" type="button" aria-label="关闭菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+      <div class="menu-section">
+        <div class="menu-label">外观</div>
+        <div class="menu-option appearance-option" data-appearance="light"><span class="radio"></span> 浅色</div>
+        <div class="menu-option appearance-option" data-appearance="dark"><span class="radio"></span> 深色</div>
+      </div>
+      <div class="menu-about">
+        <div class="menu-option" id="historyMenuBtn">
+          <span class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg></span> 训练历史
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 训练历史弹窗 ===== -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal-content">
+      <div class="modal-title">训练历史</div>
+      <div class="history-list" id="historyList"></div>
+      <div class="modal-close"><button id="historyCloseBtn" type="button">关闭</button></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // ===== 配置 =====
+      const CONFIG = {
+        STORAGE_KEY: 'fitness_state_v1',
+        HISTORY_KEY: 'fitness_history_v1',
+        APPEARANCE_KEY: 'fitness_appearance_v1',
+        SUPABASE_URL: 'https://sewtmqnaerfklfhfqtzq.supabase.co',
+        SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_63J5MUv_6VXmjwPw6QHPSg_vICgbfmS',
+        HISTORY_LIMIT: 500
+      };
+
+      // ===== Supabase =====
+      const supabaseClient = (window.supabase && window.supabase.createClient)
+        ? window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+          })
+        : null;
+      if (!supabaseClient) console.warn('健身打卡: Supabase SDK 未加载，已降级为纯本地模式。');
+
+      let currentUser = null;
+      let cloudHydrated = false;
+      let cloudSaveTimer = null;
+      let authBusy = false;
+      let authRegisterMode = false;
+      let rolloverTimer = null;
+
+      // ===== 训练计划 =====
+      // 下标 0–3 依次对应周一–周四；周五/六/日没有计划（休息日）
+      const plans = [
+        {
+          day: '周一', focus: '胸 · 三头', exercises: [
+            { name: '哑铃平板卧推', detail: '12.5kg · 8–10次 × 4组', sets: ['组1','组2','组3','组4'] },
+            { name: '哑铃上斜推举', detail: '7.5kg · 10–12次 × 3组', sets: ['组1','组2','组3'] },
+            { name: '俯卧撑', detail: '15–20次 × 3组', sets: ['组1','组2','组3'] },
+            { name: '窄距俯卧撑', detail: '10–12次 × 3组', sets: ['组1','组2','组3'] }
+          ]
+        },
+        {
+          day: '周二', focus: '背 · 二头', exercises: [
+            { name: '哑铃单臂划船', detail: '12.5kg · 每侧10–12次 × 4组', sets: ['组1','组2','组3','组4'] },
+            { name: '俯身飞鸟', detail: '5kg · 15次 × 3组', sets: ['组1','组2','组3'] },
+            { name: '哑铃弯举', detail: '按顺序完成', sequence: true, sets: ['5×15','7.5×10','12.5×3–4','7.5×8–11','12.5×3','7.5力竭'] },
+            { name: '锤式弯举', detail: '5kg · 12–15次 × 3组', sets: ['组1','组2','组3'] }
+          ]
+        },
+        {
+          day: '周三', focus: '功能性循环', exercises: [
+            { name: '哑铃下落蹲', detail: '5次', sets: ['完成'] },
+            { name: '哑铃纵跳', detail: '5次', sets: ['完成'] },
+            { name: '哑铃分腿下落蹲', detail: '每边5次', sets: ['完成'] },
+            { name: '哑铃分腿抓举', detail: '每边5次', sets: ['完成'] },
+            { name: '哑铃高脚杯深蹲', detail: '8次', sets: ['完成'] },
+            { name: '哑铃分腿蹲对角线上举', detail: '每边8次', sets: ['完成'] },
+            { name: '哑铃高脚杯侧弓步', detail: '每边6次', sets: ['完成'] },
+            { name: '哑铃高抬腿', detail: '每边8次', sets: ['完成'] },
+            { name: '哑铃转体上台阶', detail: '每边8次', sets: ['完成'] },
+            { name: '俯身哑铃划船转体上举', detail: '每边8次', sets: ['完成'] }
+          ]
+        },
+        {
+          day: '周四', focus: '肩 · 手臂', exercises: [
+            { name: '侧平举', detail: '5kg · 12–15次 × 3组', sets: ['组1','组2','组3'] },
+            { name: '前平举', detail: '5kg · 12次 × 3组', sets: ['组1','组2','组3'] },
+            { name: '哑铃弯举', detail: '7.5kg · 10–12次 × 3组', sets: ['组1','组2','组3'] }
+          ]
+        }
+      ];
+
+      const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+      // ===== 状态 =====
+      // activeDay 为 null 表示当前处于「休息日」视图
+      const state = {
+        activeDay: null,
+        activeDate: '',
+        days: plans.map(function (plan) {
+          return {
+            checks: plan.exercises.map(function (exercise) {
+              return exercise.sets.map(function () { return false; });
+            }),
+            note: ''
+          };
+        }),
+        version: 2
+      };
+
+      // ===== DOM 引用 =====
+      const $ = function (id) { return document.getElementById(id); };
+      const dom = {
+        syncHint: $('syncHint'),
+        authBtn: $('authBtn'),
+        menuBtn: $('menuBtn'),
+        menuOverlay: $('menuOverlay'),
+        menuClose: $('menuClose'),
+        historyMenuBtn: $('historyMenuBtn'),
+        historyModal: $('historyModal'),
+        historyCloseBtn: $('historyCloseBtn'),
+        dayTitle: $('dayTitle'),
+        dayFocus: $('dayFocus'),
+        plan: $('plan'),
+        note: $('note'),
+        historyList: $('historyList'),
+        progressNumber: $('progressNumber'),
+        progressFill: $('progressFill'),
+        progressTrack: document.querySelector('.progress-track'),
+        finishRow: $('finishRow'),
+        finishBtn: $('finishBtn'),
+        statusStrong: $('statusStrong'),
+        statusDetail: $('statusDetail'),
+        toast: $('toast'),
+        authModal: $('authModal'),
+        authTitle: $('authTitle'),
+        authSub: $('authSub'),
+        authForm: $('authForm'),
+        authEmail: $('authEmail'),
+        authPassword: $('authPassword'),
+        authSubmitBtn: $('authSubmitBtn'),
+        authSwitchBtn: $('authSwitchBtn'),
+        authStatus: $('authStatus'),
+        authAccountView: $('authAccountView'),
+        authAccountEmail: $('authAccountEmail'),
+        authSignOutBtn: $('authSignOutBtn'),
+        authCloseBtn: $('authCloseBtn'),
+        authGuestCloseWrap: $('authGuestCloseWrap'),
+        authGuestCloseBtn: $('authGuestCloseBtn')
+      };
+
+      let toastTimer = null;
+
+      // ===== 外观（浅色 / 深色，默认跟随系统） =====
+      const appearanceOptions = document.querySelectorAll('.appearance-option');
+      let appearancePref = 'system';
+
+      function resolveTheme(pref) {
+        if (pref === 'light' || pref === 'dark') return pref;
+        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      }
+
+      function applyAppearance(pref) {
+        appearancePref = (pref === 'light' || pref === 'dark') ? pref : 'system';
+        const theme = resolveTheme(appearancePref);
+        document.documentElement.setAttribute('data-theme', theme);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0d0f0f' : '#f2f5ee');
+        try { localStorage.setItem(CONFIG.APPEARANCE_KEY, appearancePref); } catch (e) { /* 忽略 */ }
+        appearanceOptions.forEach(function (el) {
+          const radio = el.querySelector('.radio');
+          if (radio) radio.classList.toggle('active', el.dataset.appearance === appearancePref);
+        });
+      }
+
+      function loadAppearance() {
+        let pref = 'system';
+        try { pref = localStorage.getItem(CONFIG.APPEARANCE_KEY) || 'system'; } catch (e) { /* 忽略 */ }
+        if (pref !== 'dark' && pref !== 'light' && pref !== 'system') pref = 'system';
+        applyAppearance(pref);
+      }
+
+      // 选「跟随系统」时，系统切换深浅色要立刻跟上
+      if (window.matchMedia) {
+        const schemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const onSchemeChange = function () {
+          if (appearancePref === 'system') applyAppearance('system');
+        };
+        if (schemeQuery.addEventListener) schemeQuery.addEventListener('change', onSchemeChange);
+        else if (schemeQuery.addListener) schemeQuery.addListener(onSchemeChange);
+      }
+
+      function esc(text) {
+        return String(text).replace(/[&<>'"]/g, function (char) {
+          return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char];
+        });
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        dom.toast.textContent = message;
+        dom.toast.classList.add('show');
+        toastTimer = setTimeout(function () { dom.toast.classList.remove('show'); }, 2200);
+      }
+
+      function makeId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+
+      // ===== 今天是周几 =====
+      function todayKey() {
+        const d = new Date();
+        return d.getFullYear() + '-' +
+          String(d.getMonth() + 1).padStart(2, '0') + '-' +
+          String(d.getDate()).padStart(2, '0');
+      }
+
+      // 返回今天对应的 plans 下标；周五/六/日（或没有对应计划）返回 null
+      function todayPlanIndex() {
+        const dow = new Date().getDay(); // 0=周日, 1=周一 … 6=周六
+        for (let i = 0; i < plans.length; i++) {
+          if (planDow(i) === dow) return i;
+        }
+        return null;
+      }
+
+      // plans 下标 -> getDay() 的星期值（按 day 字段名解析，避免写死顺序）
+      function planDow(index) {
+        const name = plans[index] && plans[index].day;
+        const pos = WEEKDAYS.indexOf(name);
+        return pos < 0 ? -1 : pos;
+      }
+
+      function resetDay(dayIndex) {
+        const plan = plans[dayIndex];
+        state.days[dayIndex].checks = plan.exercises.map(function (exercise) {
+          return exercise.sets.map(function () { return false; });
+        });
+        state.days[dayIndex].note = '';
+      }
+
+      // 只能看当天：activeDay 恒等于今天对应的训练日（周五/六/日为 null）
+      // 跨天时先把当天的勾选清零，否则会看到上周同一天遗留的旧记录
+      function syncActiveDayWithToday() {
+        const today = todayKey();
+        const todayIndex = todayPlanIndex();
+        let changed = false;
+
+        if (state.activeDate !== today) {
+          state.activeDate = today;
+          if (todayIndex !== null) resetDay(todayIndex);
+          changed = true;
+        }
+        if (state.activeDay !== todayIndex) {
+          state.activeDay = todayIndex;
+          changed = true;
+        }
+        return changed;
+      }
+
+      // ===== 状态序列化（本机 <-> 云端共用同一份结构） =====
+      function getSerializableState() {
+        return {
+          activeDay: state.activeDay,
+          activeDate: state.activeDate,
+          days: state.days.map(function (day) {
+            return {
+              checks: day.checks.map(function (row) { return row.slice(); }),
+              note: day.note
+            };
+          }),
+          version: 2
+        };
+      }
+
+      function applyState(d) {
+        if (!d || typeof d !== 'object') return false;
+        if (Array.isArray(d.days)) {
+          plans.forEach(function (plan, dayIndex) {
+            const srcDay = d.days[dayIndex];
+            if (!srcDay) return;
+            plan.exercises.forEach(function (exercise, exerciseIndex) {
+              const srcRow = srcDay.checks && srcDay.checks[exerciseIndex];
+              exercise.sets.forEach(function (_label, setIndex) {
+                state.days[dayIndex].checks[exerciseIndex][setIndex] = !!(srcRow && srcRow[setIndex]);
+              });
+            });
+            state.days[dayIndex].note = typeof srcDay.note === 'string' ? srcDay.note.slice(0, 500) : '';
+          });
+        }
+        if (typeof d.activeDate === 'string') state.activeDate = d.activeDate;
+        if (d.activeDay === null) {
+          state.activeDay = null;
+        } else if (typeof d.activeDay === 'number' && d.activeDay >= 0 && d.activeDay < plans.length) {
+          state.activeDay = d.activeDay;
+        }
+        return true;
+      }
+
+      function saveState() {
+        const d = getSerializableState();
+        try { localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(d)); } catch (e) { /* 忽略配额异常 */ }
+        if (currentUser && cloudHydrated) {
+          clearTimeout(cloudSaveTimer);
+          cloudSaveTimer = setTimeout(function () { saveCloudState(getSerializableState()); }, 900);
+        }
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+          if (!raw) return false;
+          return applyState(JSON.parse(raw));
+        } catch (e) { return false; }
+      }
+
+      async function saveCloudState(d) {
+        if (!supabaseClient || !currentUser || !cloudHydrated) return;
+        const { error } = await supabaseClient.from('fitness_state').upsert({
+          user_id: currentUser.id,
+          state: d,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        if (error) console.warn('健身打卡 状态同步:', error.message);
+      }
+
+      async function hydrateFromCloud() {
+        if (!supabaseClient || !currentUser) { cloudHydrated = true; return; }
+        const { data, error } = await supabaseClient
+          .from('fitness_state').select('state').eq('user_id', currentUser.id).maybeSingle();
+        if (error) {
+          console.warn('健身打卡 云端状态:', error.message);
+          cloudHydrated = true;
+          return;
+        }
+        if (data && data.state) {
+          applyState(data.state);
+          try { localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(data.state)); } catch (e) { /* 忽略 */ }
+        } else {
+          // 第一次登录：把本机已有进度迁移到云端
+          const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+          if (raw) {
+            try { await saveCloudState(JSON.parse(raw)); } catch (e) { /* 忽略 */ }
+          }
+        }
+        cloudHydrated = true;
+        if (syncActiveDayWithToday()) saveState();
+        renderPlan();
+        await loadCloudHistory();
+      }
+
+      // ===== 历史记录（本机缓存 + 云端） =====
+      function getHistory() {
+        try {
+          const raw = localStorage.getItem(CONFIG.HISTORY_KEY);
+          if (!raw) return [];
+          const data = JSON.parse(raw);
+          return Array.isArray(data) ? data : [];
+        } catch (e) { return []; }
+      }
+
+      function setHistory(history) {
+        try { localStorage.setItem(CONFIG.HISTORY_KEY, JSON.stringify(history)); } catch (e) { /* 忽略 */ }
+      }
+
+      async function loadCloudHistory() {
+        if (!supabaseClient || !currentUser) return;
+        const { data, error } = await supabaseClient
+          .from('fitness_history')
+          .select('id, day, focus, percent, note, trained_at')
+          .eq('user_id', currentUser.id)
+          .order('trained_at', { ascending: true })
+          .limit(CONFIG.HISTORY_LIMIT);
+        if (error) { console.warn('健身打卡 云端历史:', error.message); return; }
+        const history = (data || []).map(function (item) {
+          return {
+            id: item.id,
+            day: item.day || '',
+            focus: item.focus || '',
+            percent: item.percent || 0,
+            note: item.note || '',
+            trainedAt: item.trained_at
+          };
+        });
+        setHistory(history);
+        renderHistory();
+      }
+
+      async function saveHistoryEntry(entry) {
+        const item = Object.assign({}, entry, {
+          id: makeId(),
+          trainedAt: new Date().toISOString()
+        });
+        try {
+          const history = getHistory();
+          history.push(item);
+          if (history.length > CONFIG.HISTORY_LIMIT) history.splice(0, history.length - CONFIG.HISTORY_LIMIT);
+          setHistory(history);
+          renderHistory();
+          showToast(currentUser ? '已记录并同步到云端' : '已记录到本机');
+
+          if (supabaseClient && currentUser) {
+            const { error } = await supabaseClient.from('fitness_history').insert({
+              id: item.id,
+              user_id: currentUser.id,
+              day: item.day,
+              focus: item.focus,
+              percent: item.percent,
+              note: item.note || null,
+              trained_at: item.trainedAt
+            });
+            if (error) console.warn('健身打卡 历史同步:', error.message);
+          }
+        } catch (e) {
+          console.warn('健身打卡 保存历史失败:', e);
+        }
+      }
+
+      async function deleteHistoryItem(id) {
+        try {
+          setHistory(getHistory().filter(function (item) { return item.id !== id; }));
+          renderHistory();
+          if (supabaseClient && currentUser) {
+            const { error } = await supabaseClient
+              .from('fitness_history').delete().eq('id', id).eq('user_id', currentUser.id);
+            if (error) console.warn('健身打卡 删除历史:', error.message);
+          }
+        } catch (e) { /* 忽略 */ }
+      }
+
+      function renderHistory() {
+        const history = getHistory();
+        if (history.length === 0) {
+          dom.historyList.innerHTML = '<div class="history-empty">暂无记录。</div>';
+          return;
+        }
+        const sorted = history.slice().reverse();
+        dom.historyList.innerHTML = sorted.map(function (item) {
+          const dateStr = item.trainedAt ? new Date(item.trainedAt).toLocaleString('zh-CN', {
+            month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+          }) : '—';
+          const meta = [dateStr, item.note].filter(Boolean).join(' · ');
+          return '<div class="history-item" data-id="' + esc(item.id) + '">' +
+              '<span class="history-mark">✓</span>' +
+              '<div><strong>' + esc((item.day || '') + ' · ' + (item.focus || '')) + '</strong>' +
+              '<small>' + esc(meta) + '</small></div>' +
+              '<div class="history-right">' +
+                '<span class="history-percent">' + Number(item.percent || 0) + '%</span>' +
+                '<button class="h-del" data-id="' + esc(item.id) + '" type="button" aria-label="删除这条记录">✕</button>' +
+              '</div>' +
+            '</div>';
+        }).join('');
+        dom.historyList.querySelectorAll('.h-del').forEach(function (btn) {
+          btn.addEventListener('click', function () { deleteHistoryItem(this.dataset.id); });
+        });
+      }
+
+      // ===== 渲染 =====
+      function renderRestView() {
+        const dowName = WEEKDAYS[new Date().getDay()];
+        dom.dayTitle.textContent = dowName;
+        dom.dayFocus.textContent = '休息日';
+        dom.note.value = '';
+        dom.note.disabled = true;
+        dom.finishRow.hidden = true;
+        dom.plan.innerHTML = '<div class="rest-card"><strong>今天没有训练安排</strong>' +
+          '<p>周五 / 周六 / 周日 休息，好好恢复。</p></div>';
+        updateProgress();
+      }
+
+      function renderPlan() {
+        if (state.activeDay === null) { renderRestView(); return; }
+
+        const plan = plans[state.activeDay];
+        dom.finishRow.hidden = false;
+        dom.dayTitle.textContent = plan.day;
+        dom.dayFocus.textContent = plan.focus;
+        dom.note.disabled = false;
+        dom.note.value = state.days[state.activeDay].note;
+        dom.plan.innerHTML = plan.exercises.map(function (exercise, exerciseIndex) {
+          const buttons = exercise.sets.map(function (label, setIndex) {
+            const checked = state.days[state.activeDay].checks[exerciseIndex][setIndex];
+            return '<button type="button" class="set-btn" data-exercise="' + exerciseIndex + '" data-set="' + setIndex + '" aria-pressed="' + checked + '" aria-label="' + esc(exercise.name + ' ' + label) + '">' + esc(label) + '</button>';
+          }).join('');
+          return '<article class="exercise"><div class="exercise-head"><span class="exercise-index">' + (exerciseIndex + 1) + '</span><div class="exercise-main"><h2>' + esc(exercise.name) + '</h2><p class="prescription">' + esc(exercise.detail) + '</p></div></div><div class="' + (exercise.sequence ? 'sequence' : 'sets') + '">' + buttons + '</div></article>';
+        }).join('');
+        updateProgress();
+      }
+
+      function countDay(dayIndex) {
+        const flat = [].concat.apply([], state.days[dayIndex].checks);
+        const done = flat.filter(Boolean).length;
+        return { done: done, total: flat.length, percent: flat.length ? Math.round(done / flat.length * 100) : 0 };
+      }
+
+      function updateProgress() {
+        if (state.activeDay === null) {
+          dom.progressNumber.textContent = '—';
+          dom.progressNumber.classList.add('is-rest');
+          dom.progressFill.style.width = '0%';
+          dom.progressTrack.setAttribute('aria-valuenow', '0');
+          return;
+        }
+
+        const count = countDay(state.activeDay);
+        dom.progressNumber.classList.remove('is-rest');
+        dom.progressNumber.textContent = count.percent + '%';
+        dom.progressFill.style.width = count.percent + '%';
+        dom.progressTrack.setAttribute('aria-valuenow', String(count.percent));
+        dom.finishBtn.disabled = count.done === 0;
+        if (count.done === 0) {
+          dom.finishBtn.textContent = '记录本次';
+          dom.statusStrong.textContent = '还没开始';
+          dom.statusDetail.textContent = '完成任意一组后即可记录';
+        } else if (count.done === count.total) {
+          dom.finishBtn.textContent = '完成训练';
+          dom.statusStrong.textContent = '今日计划全部完成';
+          dom.statusDetail.textContent = count.done + ' / ' + count.total + ' 组';
+        } else {
+          dom.finishBtn.textContent = '提前结束';
+          dom.statusStrong.textContent = '已完成 ' + count.done + ' / ' + count.total;
+          dom.statusDetail.textContent = '还剩 ' + (count.total - count.done) + ' 组';
+        }
+      }
+
+      // ===== 认证 =====
+      function updateAuthUI() {
+        if (currentUser) {
+          dom.authBtn.textContent = (currentUser.email || '账户').split('@')[0];
+          dom.syncHint.textContent = '云端同步已开启';
+        } else {
+          dom.authBtn.textContent = '登录';
+          dom.syncHint.textContent = '未登录 · 数据仅保存在本机';
+        }
+      }
+
+      function setAuthStatus(text, type) {
+        dom.authStatus.textContent = text || '';
+        dom.authStatus.className = 'auth-status' + (type ? ' ' + type : '');
+      }
+
+      function openAuthModal() {
+        dom.authModal.classList.add('open');
+        if (currentUser) {
+          dom.authTitle.textContent = '账户';
+          dom.authSub.textContent = '当前账户的数据会自动同步到云端。';
+          dom.authForm.classList.add('hidden');
+          dom.authAccountView.classList.remove('hidden');
+          dom.authAccountEmail.textContent = currentUser.email || '';
+          dom.authGuestCloseWrap.classList.add('hidden');
+        } else {
+          dom.authTitle.textContent = authRegisterMode ? '注册 健身打卡' : '登录 健身打卡';
+          dom.authSub.textContent = '登录后，训练进度与历史记录会在设备间同步。';
+          dom.authForm.classList.remove('hidden');
+          dom.authAccountView.classList.add('hidden');
+          dom.authGuestCloseWrap.classList.remove('hidden');
+          dom.authSubmitBtn.textContent = authRegisterMode ? '注册' : '登录';
+          dom.authSwitchBtn.textContent = authRegisterMode ? '已有账户？登录' : '还没有账户？注册';
+        }
+        setAuthStatus('');
+      }
+
+      function closeAuthModal() {
+        dom.authModal.classList.remove('open');
+      }
+
+      function openMenu() {
+        dom.menuOverlay.classList.add('open');
+      }
+
+      function closeMenu() {
+        dom.menuOverlay.classList.remove('open');
+      }
+
+      function closeHistoryModal() {
+        dom.historyModal.classList.remove('open');
+      }
+
+      function friendlyAuthError(error) {
+        const raw = (error && error.message) || '操作失败，请稍后重试。';
+        const map = {
+          'Invalid login credentials': '邮箱或密码不正确。',
+          'Email not confirmed': '邮箱还没验证，请先到邮箱点确认链接。',
+          'User already registered': '这个邮箱已经注册过了，直接登录即可。',
+          'Password should be at least 6 characters': '密码至少需要 6 位。',
+          'Unable to validate email address: invalid format': '邮箱格式不正确。',
+          'Email rate limit exceeded': '请求太频繁，请稍后再试。',
+          'signup is disabled': '该项目的注册功能已关闭。'
+        };
+        if (map[raw]) return map[raw];
+        if (/rate limit|too many/i.test(raw)) return '请求太频繁，请稍后再试。';
+        if (/fetch|network|Failed to fetch/i.test(raw)) return '网络连接失败，请检查网络后重试。';
+        return raw;
+      }
+
+      async function submitAuth() {
+        if (authBusy || !supabaseClient) return;
+        const email = dom.authEmail.value.trim();
+        const password = dom.authPassword.value;
+        if (!email || !email.includes('@')) { setAuthStatus('请输入有效邮箱。', 'error'); return; }
+        if (password.length < 6) { setAuthStatus('密码至少需要 6 位。', 'error'); return; }
+
+        authBusy = true;
+        dom.authSubmitBtn.disabled = true;
+        setAuthStatus(authRegisterMode ? '正在注册……' : '正在登录……');
+        try {
+          if (authRegisterMode) {
+            const { data, error } = await supabaseClient.auth.signUp({
+              email: email,
+              password: password,
+              options: { emailRedirectTo: window.location.origin + window.location.pathname }
+            });
+            if (error) throw error;
+            if (data.session) {
+              setAuthStatus('注册成功，正在同步。', 'success');
+            } else {
+              setAuthStatus('注册成功，请检查邮箱完成验证后再登录。', 'success');
+              authRegisterMode = false;
+            }
+          } else {
+            const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+            if (error) throw error;
+            setAuthStatus('登录成功。', 'success');
+          }
+        } catch (e) {
+          setAuthStatus(friendlyAuthError(e), 'error');
+        } finally {
+          authBusy = false;
+          dom.authSubmitBtn.disabled = false;
+        }
+      }
+
+      async function handleAuthSession(session) {
+        const nextUserId = session && session.user ? session.user.id : null;
+        if (nextUserId && currentUser && currentUser.id === nextUserId && cloudHydrated) return;
+        currentUser = (session && session.user) || null;
+        cloudHydrated = false;
+        updateAuthUI();
+        if (currentUser) {
+          await hydrateFromCloud();
+          closeAuthModal();
+          dom.authEmail.value = '';
+          dom.authPassword.value = '';
+        }
+      }
+
+      // ===== 事件绑定 =====
+      function bindEvents() {
+        dom.authBtn.addEventListener('click', openAuthModal);
+        dom.authSubmitBtn.addEventListener('click', submitAuth);
+        dom.authSwitchBtn.addEventListener('click', function () {
+          authRegisterMode = !authRegisterMode;
+          openAuthModal();
+          dom.authPassword.value = '';
+        });
+        dom.authGuestCloseBtn.addEventListener('click', closeAuthModal);
+        dom.authCloseBtn.addEventListener('click', closeAuthModal);
+        dom.authModal.addEventListener('click', function (e) {
+          if (e.target === this) closeAuthModal();
+        });
+        dom.authPassword.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); submitAuth(); }
+        });
+        dom.authEmail.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); submitAuth(); }
+        });
+        dom.authSignOutBtn.addEventListener('click', async function () {
+          if (!supabaseClient) return;
+          await supabaseClient.auth.signOut();
+          closeAuthModal();
+          cloudHydrated = false;
+          currentUser = null;
+          updateAuthUI();
+          setAuthStatus('');
+          showToast('已退出登录，数据保留在本机');
+        });
+
+        // ---- 右上角菜单 ----
+        dom.menuBtn.addEventListener('click', openMenu);
+        dom.menuClose.addEventListener('click', closeMenu);
+        dom.menuOverlay.addEventListener('click', function (e) {
+          if (e.target === this) closeMenu();
+        });
+        appearanceOptions.forEach(function (el) {
+          el.addEventListener('click', function () {
+            applyAppearance(this.dataset.appearance);
+          });
+        });
+        dom.historyMenuBtn.addEventListener('click', function () {
+          closeMenu();
+          renderHistory();
+          dom.historyModal.classList.add('open');
+        });
+        dom.historyCloseBtn.addEventListener('click', closeHistoryModal);
+        dom.historyModal.addEventListener('click', function (e) {
+          if (e.target === this) closeHistoryModal();
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape') return;
+          closeMenu();
+          closeAuthModal();
+          closeHistoryModal();
+        });
+
+        dom.plan.addEventListener('click', function (event) {
+          if (state.activeDay === null) return;
+          const button = event.target.closest('.set-btn');
+          if (!button) return;
+          const exerciseIndex = Number(button.getAttribute('data-exercise'));
+          const setIndex = Number(button.getAttribute('data-set'));
+          const value = !state.days[state.activeDay].checks[exerciseIndex][setIndex];
+          state.days[state.activeDay].checks[exerciseIndex][setIndex] = value;
+          button.setAttribute('aria-pressed', String(value));
+          saveState();
+          updateProgress();
+        });
+
+        dom.note.addEventListener('input', function () {
+          if (state.activeDay === null) return;
+          state.days[state.activeDay].note = dom.note.value;
+          saveState();
+        });
+
+        dom.finishBtn.addEventListener('click', async function () {
+          if (state.activeDay === null) return;
+          state.days[state.activeDay].note = dom.note.value.trim();
+          saveState();
+          const count = countDay(state.activeDay);
+          if (!count.done) return;
+
+          dom.finishBtn.disabled = true;
+          dom.finishBtn.textContent = '保存中…';
+          await saveHistoryEntry({
+            day: plans[state.activeDay].day,
+            focus: plans[state.activeDay].focus,
+            percent: count.percent,
+            note: state.days[state.activeDay].note
+          });
+          updateProgress();
+        });
+      }
+
+      // ===== 初始化 =====
+      function init() {
+        loadAppearance();
+        loadState();
+        if (syncActiveDayWithToday()) saveState();
+        renderPlan();
+        renderHistory();
+        updateAuthUI();
+
+        // 跨天（例如页面在手机上开了一夜）：每分钟检查一次
+        // 进入新的一天会清零当天勾选并切到当天的计划
+        clearInterval(rolloverTimer);
+        rolloverTimer = setInterval(function () {
+          if (syncActiveDayWithToday()) {
+            saveState();
+            renderPlan();
+          }
+        }, 60000);
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        init();
+        bindEvents();
+
+        if (!supabaseClient) {
+          dom.syncHint.textContent = '云端未连接 · 数据仅保存在本机';
+          console.log('健身打卡 已启动（本地模式）');
+          return;
+        }
+
+        supabaseClient.auth.onAuthStateChange(function (event, session) {
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+            setTimeout(function () { handleAuthSession(session); }, 0);
+          } else if (event === 'SIGNED_OUT') {
+            currentUser = null;
+            cloudHydrated = false;
+            updateAuthUI();
+          }
+        });
+
+        supabaseClient.auth.getSession().then(function (res) {
+          const session = res && res.data ? res.data.session : null;
+          if (session) handleAuthSession(session);
+        }).catch(function (e) {
+          console.warn('健身打卡 会话读取:', e && e.message);
+        });
+
+        console.log('健身打卡 已启动，今天是 ' + WEEKDAYS[new Date().getDay()]);
+      });
+
+      window.__FITNESS = {
+        state,
+        CONFIG,
+        plans,
+        todayKey,
+        todayPlanIndex,
+        syncActiveDayWithToday,
+        resetDay,
+        applyAppearance,
+        loadAppearance,
+        getSerializableState,
+        applyState,
+        saveState,
+        getHistory,
+        renderHistory,
+        saveHistoryEntry,
+        deleteHistoryItem,
+        loadCloudHistory,
+        hydrateFromCloud,
+        countDay
+      };
+    }());
+  </script>
+</body>
+</html>
