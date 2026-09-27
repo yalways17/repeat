@@ -48,11 +48,18 @@
       --overlay: rgba(0, 0, 0, .62);
     }
     * { box-sizing: border-box; }
-    html { -webkit-tap-highlight-color: transparent; }
+    html {
+      -webkit-tap-highlight-color: transparent;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     body {
       margin: 0;
+      height: 100%;
       min-width: 320px;
-      min-height: 100vh;
+      overflow: hidden;
+      overscroll-behavior: none;
       background: var(--bg);
       color: var(--text);
       font-family: "SF Pro Text", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
@@ -63,11 +70,31 @@
     button { color: inherit; }
     .hidden { display: none !important; }
     [hidden] { display: none !important; }
+    /* 页面本身锁死：顶部（账号栏 / 日期 / 进度）和底部记录条固定不动，
+       只有 .scroll-area 内部滚动。手机上也不会再出现整页橡皮筋回弹。 */
     .app {
       width: min(760px, 100%);
+      height: 100vh;
+      height: 100dvh;
       margin: 0 auto;
-      padding: max(24px, env(safe-area-inset-top)) 20px max(120px, calc(28px + env(safe-area-inset-bottom)));
+      padding: max(24px, env(safe-area-inset-top)) 20px 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
+    .scroll-area {
+      flex: 1 1 auto;
+      min-height: 0;                 /* flex 子项默认 min-height:auto，不写这个它不会收缩，也就不会滚 */
+      overflow-y: auto;
+      overscroll-behavior: contain;  /* 滚到头也不要带动整页 */
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(88px + env(safe-area-inset-bottom));  /* 给底部记录条让位 */
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+    .scroll-area::-webkit-scrollbar { width: 6px; }
+    .scroll-area::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
     .account-row {
       display: flex;
       align-items: center;
@@ -612,10 +639,12 @@
     </div>
     <div class="progress-track" role="progressbar" aria-label="今日训练完成进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progressFill"></div></div>
 
-    <section class="plan" id="plan" aria-live="polite"></section>
+    <div class="scroll-area">
+      <section class="plan" id="plan" aria-live="polite"></section>
 
-    <h2 class="section-title">训练备注</h2>
-    <textarea class="note" id="note" maxlength="500" placeholder="今天的状态、动作感受、需要调整的地方……"></textarea>
+      <h2 class="section-title">训练备注</h2>
+      <textarea class="note" id="note" maxlength="500" placeholder="今天的状态、动作感受、需要调整的地方……"></textarea>
+    </div>
   </main>
 
   <div class="finish-row" id="finishRow">
