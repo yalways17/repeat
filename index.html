@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=1">
   <link rel="manifest" href="./site.webmanifest">
   <!-- ?v=1：图标改了但文件名没变，加版本号才能绕开浏览器对 favicon 的长期缓存 -->
-  <title>健身打卡</title>
+  <title>Repeat · 健身打卡</title>
   <style>
     /* ===== 浅色（默认） ===== */
     :root {
@@ -629,7 +629,7 @@
   <!-- ===== 账户弹窗 ===== -->
   <div class="modal-overlay" id="authModal">
     <div class="modal-content">
-      <div class="modal-title" id="authTitle">登录 健身打卡</div>
+      <div class="modal-title" id="authTitle">登录 Repeat</div>
       <div class="modal-sub" id="authSub">登录后，训练记录会在设备间同步。</div>
       <div class="auth-form" id="authForm">
         <input type="email" id="authEmail" autocomplete="email" placeholder="邮箱" maxlength="254">
@@ -1214,7 +1214,7 @@
           dom.authAccountEmail.textContent = currentUser.email || '';
           dom.authGuestCloseWrap.classList.add('hidden');
         } else {
-          dom.authTitle.textContent = authRegisterMode ? '注册 健身打卡' : '登录 健身打卡';
+          dom.authTitle.textContent = authRegisterMode ? '注册 Repeat' : '登录 Repeat';
           dom.authSub.textContent = '登录后，训练进度与历史记录会在设备间同步。';
           dom.authForm.classList.remove('hidden');
           dom.authAccountView.classList.add('hidden');

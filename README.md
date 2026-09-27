@@ -1,4 +1,4 @@
-# 健身打卡
+# Repeat · 健身打卡
 
 🏋️ 一个只管「今天练什么」的力量训练打卡应用。
 
@@ -35,7 +35,7 @@
 
 ## 🌐 在线体验
 
-[健身打卡](https://yalways17.github.io/fitness/)
+[Repeat](https://yalways17.github.io/Repeat/)
 
 ## ☁️ 云端
 
@@ -60,9 +60,9 @@ HTML（单文件）+ Supabase（邮箱登录与云端同步）
 .\_makeicons.ps1
 
 # 2) 推到 GitHub 并开启 Pages
-.\_pub.ps1
+.\_pub.ps1 -Repo Repeat
 ```
 
 ---
 
-**健身打卡 · v.1.0.0**
+**Repeat · v.1.0.0**
