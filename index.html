@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f2f5ee">
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png?v=1">
@@ -53,6 +53,7 @@
       height: 100%;
       overflow: hidden;
       overscroll-behavior: none;
+      touch-action: pan-x pan-y;   /* 允许平移滚动，禁掉双指缩放 */
     }
     body {
       margin: 0;
@@ -60,6 +61,7 @@
       min-width: 320px;
       overflow: hidden;
       overscroll-behavior: none;
+      touch-action: pan-x pan-y;
       background: var(--bg);
       color: var(--text);
       font-family: "SF Pro Text", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
@@ -618,6 +620,21 @@
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', dark ? '#0d0f0f' : '#f2f5ee');
+    }());
+
+    // 禁止页面缩放
+    // meta 里的 user-scalable=no + CSS 的 touch-action 已经能挡住绝大多数浏览器，
+    // 但 iOS Safari 从 10 开始【故意忽略】user-scalable=no（出于无障碍考虑），
+    // 所以必须再监听它私有的 gesture* 事件，才能真正拦住双指缩放。
+    (function () {
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (name) {
+        document.addEventListener(name, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      // 桌面端：Ctrl + 滚轮 / 触控板双指缩放
+      // （浏览器自带的 Ctrl + 加减号拦不住，那是浏览器层面的快捷键）
+      document.addEventListener('wheel', function (e) {
+        if (e.ctrlKey) e.preventDefault();
+      }, { passive: false });
     }());
   </script>
 </head>
