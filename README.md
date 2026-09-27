@@ -35,7 +35,7 @@
 
 ## 🌐 在线体验
 
-[Repeat](https://yalways17.github.io/Repeat/)
+[Repeat](https://yalways17.github.io/repeat/)
 
 ## ☁️ 云端
 
