@@ -1309,7 +1309,7 @@
           return;
         }
 
-        // 今天提交过就只锁交互 —— 进度和状态文案照常显示，不切换成「今日已记录」
+        // 今天提交过就锁住交互（状态行仍显示当天的真实进度，只有按钮文案会变）
         const locked = isTodayLocked();
 
         const count = countDay(state.activeDay);
@@ -1328,6 +1328,8 @@
           dom.finishBtn.textContent = '提前结束';
           dom.statusStrong.textContent = '已完成 ' + count.done + ' / ' + count.total;
         }
+        // 提交之后：按钮显示「今日已记录」，状态行保持原样
+        if (locked) dom.finishBtn.textContent = '今日已记录';
       }
 
       // ===== 认证 =====
