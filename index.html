@@ -873,9 +873,12 @@
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', theme === 'dark' ? '#0d0f0f' : '#f2f5ee');
         try { localStorage.setItem(CONFIG.APPEARANCE_KEY, appearancePref); } catch (e) { /* 忽略 */ }
+        // 圆点跟着「当前实际生效的主题」走，而不是原始偏好值。
+        // 否则从没选过时 appearancePref 是 'system'，而菜单里只有浅色/深色两项，
+        // 两个圆点就都不亮 —— 看起来像没选中任何东西。
         appearanceOptions.forEach(function (el) {
           const radio = el.querySelector('.radio');
-          if (radio) radio.classList.toggle('active', el.dataset.appearance === appearancePref);
+          if (radio) radio.classList.toggle('active', el.dataset.appearance === theme);
         });
       }
 
