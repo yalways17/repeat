@@ -269,6 +269,9 @@
       color: var(--accent-ink);
     }
     .set-btn[aria-pressed="true"]::before { content: "✓ "; }
+    /* 已提交锁页：勾过的保持原样，没勾的压暗 */
+    .set-btn:disabled { cursor: default; }
+    .set-btn:disabled:not([aria-pressed="true"]) { opacity: .38; }
     .sequence {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -362,6 +365,9 @@
     .history-item small { color: var(--muted); overflow-wrap: anywhere; }
     .history-right { display: flex; align-items: center; gap: 10px; }
     .history-percent { color: var(--accent-strong); font-weight: 750; font-variant-numeric: tabular-nums; }
+    /* 休息日：不做成「0% 失败」的样子 */
+    .history-item.is-rest .history-mark { background: var(--surface-2); color: var(--muted); }
+    .history-item.is-rest .history-percent { color: var(--muted); font-weight: 650; }
     .h-del {
       border: 0;
       background: none;
@@ -729,7 +735,8 @@
         APPEARANCE_KEY: 'fitness_appearance_v1',
         SUPABASE_URL: 'https://sewtmqnaerfklfhfqtzq.supabase.co',
         SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_63J5MUv_6VXmjwPw6QHPSg_vICgbfmS',
-        HISTORY_LIMIT: 500
+        HISTORY_LIMIT: 500,
+        REST_FOCUS: '休息'
       };
 
       // ===== Supabase =====
@@ -796,6 +803,7 @@
       const state = {
         activeDay: null,
         activeDate: '',
+        startDate: '',          // 第一次打开这个 App 的日期，用来决定历史补到哪一天
         days: plans.map(function (plan) {
           return {
             checks: plan.exercises.map(function (exercise) {
@@ -912,26 +920,46 @@
 
       // ===== 今天是周几 =====
       function todayKey() {
-        const d = new Date();
-        return d.getFullYear() + '-' +
-          String(d.getMonth() + 1).padStart(2, '0') + '-' +
-          String(d.getDate()).padStart(2, '0');
+        return dayKeyOf(new Date());
       }
 
       // 返回今天对应的 plans 下标；周五/六/日（或没有对应计划）返回 null
       function todayPlanIndex() {
-        const dow = new Date().getDay(); // 0=周日, 1=周一 … 6=周六
+        return planIndexForDow(new Date().getDay()); // 0=周日, 1=周一 … 6=周六
+      }
+
+      // 星期值 -> plans 下标（按 day 字段名解析，避免写死顺序）
+      function planIndexForDow(dow) {
         for (let i = 0; i < plans.length; i++) {
           if (planDow(i) === dow) return i;
         }
         return null;
       }
 
-      // plans 下标 -> getDay() 的星期值（按 day 字段名解析，避免写死顺序）
+      // plans 下标 -> getDay() 的星期值
       function planDow(index) {
         const name = plans[index] && plans[index].day;
         const pos = WEEKDAYS.indexOf(name);
         return pos < 0 ? -1 : pos;
+      }
+
+      // ---- 日期工具：统一用 'YYYY-MM-DD' 字符串，字典序就是时间序 ----
+      function dayKeyOf(dateObj) {
+        return dateObj.getFullYear() + '-' +
+          String(dateObj.getMonth() + 1).padStart(2, '0') + '-' +
+          String(dateObj.getDate()).padStart(2, '0');
+      }
+
+      function shiftKey(key, days) {
+        const p = key.split('-');
+        const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        d.setDate(d.getDate() + days);
+        return dayKeyOf(d);
+      }
+
+      // 'YYYY-MM-DD' -> '09-27'
+      function shortKey(key) {
+        return key ? key.slice(5) : '—';
       }
 
       function resetDay(dayIndex) {
@@ -966,6 +994,7 @@
         return {
           activeDay: state.activeDay,
           activeDate: state.activeDate,
+          startDate: state.startDate,
           days: state.days.map(function (day) {
             return {
               checks: day.checks.map(function (row) { return row.slice(); }),
@@ -992,6 +1021,7 @@
           });
         }
         if (typeof d.activeDate === 'string') state.activeDate = d.activeDate;
+        if (typeof d.startDate === 'string') state.startDate = d.startDate;
         if (d.activeDay === null) {
           state.activeDay = null;
         } else if (typeof d.activeDay === 'number' && d.activeDay >= 0 && d.activeDay < plans.length) {
@@ -1050,6 +1080,7 @@
         if (syncActiveDayWithToday()) saveState();
         renderPlan();
         await loadCloudHistory();
+        if (await closeOutPastDays()) renderPlan();
       }
 
       // ===== 历史记录（本机缓存 + 云端） =====
@@ -1066,57 +1097,130 @@
         try { localStorage.setItem(CONFIG.HISTORY_KEY, JSON.stringify(history)); } catch (e) { /* 忽略 */ }
       }
 
+      // 按日期升序存放（字典序 == 时间序）
+      function sortHistory(list) {
+        list.sort(function (a, b) {
+          const x = a.date || '', y = b.date || '';
+          return x < y ? -1 : (x > y ? 1 : 0);
+        });
+        return list;
+      }
+
+      function getRecordByDate(date) {
+        const hit = getHistory().filter(function (r) { return r.date === date; });
+        return hit.length ? hit[0] : null;
+      }
+
+      // 今天是否已经提交过 —— 提交过就锁页
+      function isTodayLocked() {
+        return !!getRecordByDate(todayKey());
+      }
+
+      // 某一天「本来该是什么」：有训练日就是那天的计划，没有就是休息
+      function buildDayRecord(date, percent, note) {
+        const dow = new Date(date + 'T12:00:00').getDay();
+        const idx = planIndexForDow(dow);
+        const isRest = idx === null;
+        return {
+          id: makeId(),
+          date: date,
+          day: WEEKDAYS[dow],
+          focus: isRest ? CONFIG.REST_FOCUS : plans[idx].focus,
+          percent: isRest ? 0 : (percent || 0),
+          note: note || '',
+          rest: isRest,
+          trainedAt: new Date(date + 'T00:00:00').toISOString()
+        };
+      }
+
       async function loadCloudHistory() {
         if (!supabaseClient || !currentUser) return;
+        // 用 select('*') 而不是列名清单：万一 log_date 还没加上，整个查询也不会挂
         const { data, error } = await supabaseClient
           .from('fitness_history')
-          .select('id, day, focus, percent, note, trained_at')
+          .select('*')
           .eq('user_id', currentUser.id)
           .order('trained_at', { ascending: true })
           .limit(CONFIG.HISTORY_LIMIT);
         if (error) { console.warn('健身打卡 云端历史:', error.message); return; }
         const history = (data || []).map(function (item) {
+          const focus = item.focus || '';
           return {
             id: item.id,
+            date: item.log_date || (item.trained_at ? String(item.trained_at).slice(0, 10) : ''),
             day: item.day || '',
-            focus: item.focus || '',
+            focus: focus,
             percent: item.percent || 0,
             note: item.note || '',
+            rest: focus === CONFIG.REST_FOCUS,
             trainedAt: item.trained_at
           };
         });
-        setHistory(history);
+        setHistory(sortHistory(history));
         renderHistory();
       }
 
-      async function saveHistoryEntry(entry) {
-        const item = Object.assign({}, entry, {
-          id: makeId(),
-          trainedAt: new Date().toISOString()
+      async function cloudWriteRecords(records) {
+        if (!supabaseClient || !currentUser || !records.length) return;
+        const rows = records.map(function (item) {
+          return {
+            id: item.id,
+            user_id: currentUser.id,
+            log_date: item.date,
+            day: item.day,
+            focus: item.focus,
+            percent: item.percent,
+            note: item.note || null,
+            trained_at: item.trainedAt
+          };
         });
-        try {
-          const history = getHistory();
-          history.push(item);
-          if (history.length > CONFIG.HISTORY_LIMIT) history.splice(0, history.length - CONFIG.HISTORY_LIMIT);
-          setHistory(history);
-          renderHistory();
-          showToast(currentUser ? '已记录并同步到云端' : '已记录到本机');
-
-          if (supabaseClient && currentUser) {
-            const { error } = await supabaseClient.from('fitness_history').insert({
-              id: item.id,
-              user_id: currentUser.id,
-              day: item.day,
-              focus: item.focus,
-              percent: item.percent,
-              note: item.note || null,
-              trained_at: item.trainedAt
-            });
-            if (error) console.warn('健身打卡 历史同步:', error.message);
-          }
-        } catch (e) {
-          console.warn('健身打卡 保存历史失败:', e);
+        // 有 (user_id, log_date) 唯一索引就走 upsert；没加索引的话退回 insert
+        let res = await supabaseClient.from('fitness_history').upsert(rows, { onConflict: 'user_id,log_date' });
+        if (res.error) {
+          res = await supabaseClient.from('fitness_history').insert(rows);
+          if (res.error) console.warn('健身打卡 历史同步:', res.error.message);
         }
+      }
+
+      // 唯一的写入口：落本机 + 同步云端。每天最多一条，已存在的日期直接跳过
+      async function pushRecords(records) {
+        if (!records.length) return 0;
+        const history = getHistory();
+        const seen = {};
+        history.forEach(function (r) { if (r.date) seen[r.date] = true; });
+
+        const added = records.filter(function (rec) {
+          if (seen[rec.date]) return false;
+          seen[rec.date] = true;
+          return true;
+        });
+        if (!added.length) return 0;
+
+        added.forEach(function (rec) { history.push(rec); });
+        sortHistory(history);
+        if (history.length > CONFIG.HISTORY_LIMIT) history.splice(0, history.length - CONFIG.HISTORY_LIMIT);
+        setHistory(history);
+        renderHistory();
+        await cloudWriteRecords(added);
+        return added.length;
+      }
+
+      // 每天 0 点结账：把「今天之前」缺记录的日子补上
+      // 休息日标成「休息」，其余一律 0%
+      async function closeOutPastDays() {
+        const today = todayKey();
+        const have = {};
+        getHistory().forEach(function (r) { if (r.date) have[r.date] = true; });
+
+        let cursor = (state.startDate && state.startDate < today) ? state.startDate : today;
+        const missing = [];
+        let guard = 0;
+        while (cursor < today && guard++ < 400) {
+          if (!have[cursor]) missing.push(buildDayRecord(cursor, 0, ''));
+          cursor = shiftKey(cursor, 1);
+        }
+        if (!missing.length) return 0;
+        return await pushRecords(missing);
       }
 
       async function deleteHistoryItem(id) {
@@ -1132,23 +1236,20 @@
       }
 
       function renderHistory() {
-        const history = getHistory();
-        if (history.length === 0) {
+        const history = sortHistory(getHistory().slice()).reverse();   // 新的在上面
+        if (!history.length) {
           dom.historyList.innerHTML = '<div class="history-empty">暂无记录。</div>';
           return;
         }
-        const sorted = history.slice().reverse();
-        dom.historyList.innerHTML = sorted.map(function (item) {
-          const dateStr = item.trainedAt ? new Date(item.trainedAt).toLocaleString('zh-CN', {
-            month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-          }) : '—';
-          const meta = [dateStr, item.note].filter(Boolean).join(' · ');
-          return '<div class="history-item" data-id="' + esc(item.id) + '">' +
-              '<span class="history-mark">✓</span>' +
+        dom.historyList.innerHTML = history.map(function (item) {
+          const isRest = !!item.rest || item.focus === CONFIG.REST_FOCUS;
+          const meta = [shortKey(item.date), item.note].filter(Boolean).join(' · ');
+          return '<div class="history-item' + (isRest ? ' is-rest' : '') + '" data-id="' + esc(item.id) + '">' +
+              '<span class="history-mark">' + (isRest ? '·' : '✓') + '</span>' +
               '<div><strong>' + esc((item.day || '') + ' · ' + (item.focus || '')) + '</strong>' +
               '<small>' + esc(meta) + '</small></div>' +
               '<div class="history-right">' +
-                '<span class="history-percent">' + Number(item.percent || 0) + '%</span>' +
+                '<span class="history-percent">' + (isRest ? '休息' : Number(item.percent || 0) + '%') + '</span>' +
                 '<button class="h-del" data-id="' + esc(item.id) + '" type="button" aria-label="删除这条记录">✕</button>' +
               '</div>' +
             '</div>';
@@ -1175,15 +1276,18 @@
         if (state.activeDay === null) { renderRestView(); return; }
 
         const plan = plans[state.activeDay];
+        const locked = isTodayLocked();
         dom.finishRow.hidden = false;
         dom.dayTitle.textContent = plan.day;
-        dom.dayFocus.textContent = plan.focus;
-        dom.note.disabled = false;
+        dom.dayFocus.textContent = locked ? plan.focus + ' · 今日已记录' : plan.focus;
+        dom.note.disabled = locked;
         dom.note.value = state.days[state.activeDay].note;
         dom.plan.innerHTML = plan.exercises.map(function (exercise, exerciseIndex) {
           const buttons = exercise.sets.map(function (label, setIndex) {
             const checked = state.days[state.activeDay].checks[exerciseIndex][setIndex];
-            return '<button type="button" class="set-btn" data-exercise="' + exerciseIndex + '" data-set="' + setIndex + '" aria-pressed="' + checked + '" aria-label="' + esc(exercise.name + ' ' + label) + '">' + esc(label) + '</button>';
+            return '<button type="button" class="set-btn" data-exercise="' + exerciseIndex + '" data-set="' + setIndex + '"' +
+              (locked ? ' disabled' : '') +
+              ' aria-pressed="' + checked + '" aria-label="' + esc(exercise.name + ' ' + label) + '">' + esc(label) + '</button>';
           }).join('');
           return '<article class="exercise"><div class="exercise-head"><span class="exercise-index">' + (exerciseIndex + 1) + '</span><div class="exercise-main"><h2>' + esc(exercise.name) + '</h2><p class="prescription">' + esc(exercise.detail) + '</p></div></div><div class="' + (exercise.sequence ? 'sequence' : 'sets') + '">' + buttons + '</div></article>';
         }).join('');
@@ -1202,6 +1306,21 @@
           dom.progressNumber.classList.add('is-rest');
           dom.progressFill.style.width = '0%';
           dom.progressTrack.setAttribute('aria-valuenow', '0');
+          return;
+        }
+
+        // 今天已经提交过 -> 锁页，进度显示最终结果
+        const rec = getRecordByDate(todayKey());
+        if (rec) {
+          const pct = Number(rec.percent || 0);
+          dom.progressNumber.classList.remove('is-rest');
+          dom.progressNumber.textContent = pct + '%';
+          dom.progressFill.style.width = pct + '%';
+          dom.progressTrack.setAttribute('aria-valuenow', String(pct));
+          dom.finishBtn.disabled = true;
+          dom.finishBtn.textContent = '今日已记录';
+          dom.statusStrong.textContent = '今日已记录';
+          dom.statusDetail.textContent = '明天 0 点后可再记';
           return;
         }
 
@@ -1405,6 +1524,7 @@
 
         dom.plan.addEventListener('click', function (event) {
           if (state.activeDay === null) return;
+          if (isTodayLocked()) return;                 // 锁页后不能再改勾选
           const button = event.target.closest('.set-btn');
           if (!button) return;
           const exerciseIndex = Number(button.getAttribute('data-exercise'));
@@ -1418,12 +1538,14 @@
 
         dom.note.addEventListener('input', function () {
           if (state.activeDay === null) return;
+          if (isTodayLocked()) return;
           state.days[state.activeDay].note = dom.note.value;
           saveState();
         });
 
         dom.finishBtn.addEventListener('click', async function () {
           if (state.activeDay === null) return;
+          if (isTodayLocked()) return;                 // 每天只能提交一次
           state.days[state.activeDay].note = dom.note.value.trim();
           saveState();
           const count = countDay(state.activeDay);
@@ -1431,13 +1553,13 @@
 
           dom.finishBtn.disabled = true;
           dom.finishBtn.textContent = '保存中…';
-          await saveHistoryEntry({
-            day: plans[state.activeDay].day,
-            focus: plans[state.activeDay].focus,
-            percent: count.percent,
-            note: state.days[state.activeDay].note
-          });
-          updateProgress();
+          const added = await pushRecords([
+            buildDayRecord(todayKey(), count.percent, state.days[state.activeDay].note)
+          ]);
+          renderPlan();
+          showToast(added
+            ? (currentUser ? '已记录并同步到云端' : '已记录到本机')
+            : '今天已经记录过了');
         });
       }
 
@@ -1445,19 +1567,24 @@
       function init() {
         loadAppearance();
         loadState();
+        if (!state.startDate) { state.startDate = todayKey(); saveState(); }   // 首次打开，记下起点
         if (syncActiveDayWithToday()) saveState();
         renderPlan();
         renderHistory();
         updateAuthUI();
 
+        // 补上以前漏掉的日子（异步，不挡渲染）
+        closeOutPastDays().then(function (n) { if (n) renderPlan(); });
+
         // 跨天（例如页面在手机上开了一夜）：每分钟检查一次
-        // 进入新的一天会清零当天勾选并切到当天的计划
+        // 进入新的一天会清零当天勾选、切到当天计划，并把昨天结账
         clearInterval(rolloverTimer);
-        rolloverTimer = setInterval(function () {
+        rolloverTimer = setInterval(async function () {
           if (syncActiveDayWithToday()) {
             saveState();
             renderPlan();
           }
+          if (await closeOutPastDays()) renderPlan();
         }, 60000);
       }
 
@@ -1505,7 +1632,11 @@
         saveState,
         getHistory,
         renderHistory,
-        saveHistoryEntry,
+        pushRecords,
+        closeOutPastDays,
+        isTodayLocked,
+        getRecordByDate,
+        buildDayRecord,
         deleteHistoryItem,
         loadCloudHistory,
         hydrateFromCloud,
