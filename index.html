@@ -1133,6 +1133,21 @@
         };
       }
 
+      // 云端 + 本机取并集：同一天以云端为准，本机独有的保留下来
+      // （离线提交、上次上传失败留下的记录，不能因为一次拉取就被抹掉）
+      function mergeHistories(cloud, local) {
+        const byDate = {};
+        cloud.forEach(function (r) { if (r.date) byDate[r.date] = r; });
+        const localOnly = [];
+        local.forEach(function (r) {
+          if (r.date && !byDate[r.date]) { byDate[r.date] = r; localOnly.push(r); }
+        });
+        return {
+          merged: sortHistory(Object.keys(byDate).map(function (k) { return byDate[k]; })),
+          localOnly: localOnly
+        };
+      }
+
       async function loadCloudHistory() {
         if (!supabaseClient || !currentUser) return;
         // 用 select('*') 而不是列名清单：万一 log_date 还没加上，整个查询也不会挂
@@ -1143,7 +1158,7 @@
           .order('trained_at', { ascending: true })
           .limit(CONFIG.HISTORY_LIMIT);
         if (error) { console.warn('健身打卡 云端历史:', error.message); return; }
-        const history = (data || []).map(function (item) {
+        const cloud = (data || []).map(function (item) {
           const focus = item.focus || '';
           return {
             id: item.id,
@@ -1156,8 +1171,12 @@
             trainedAt: item.trained_at
           };
         });
-        setHistory(sortHistory(history));
+
+        const res = mergeHistories(cloud, getHistory());
+        setHistory(res.merged);
         renderHistory();
+        // 本机独有（云端还没有）的补传上去，两台设备最终才会一致
+        if (res.localOnly.length) await cloudWriteRecords(res.localOnly);
       }
 
       async function cloudWriteRecords(records) {
@@ -1622,6 +1641,7 @@
         renderPlan,
         updateProgress,
         pushRecords,
+        mergeHistories,
         closeOutPastDays,
         isTodayLocked,
         getRecordByDate,
