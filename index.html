@@ -324,7 +324,6 @@
     }
     .status-copy { flex: 1; min-width: 0; }
     .status-copy strong { display: block; font-size: 14px; }
-    .status-copy span { color: var(--muted); font-size: 12px; }
     .finish-btn {
       min-height: 48px;
       border: 0;
@@ -604,7 +603,6 @@
       .rest-card { padding: 26px 18px; }
       .exercise h2 { font-size: 16px; }
       .sequence { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .status-copy span { display: none; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
@@ -665,7 +663,7 @@
 
   <div class="finish-row" id="finishRow">
     <div class="finish-inner">
-      <div class="status-copy"><strong id="statusStrong">还没开始</strong><span id="statusDetail">完成任意一组后即可记录</span></div>
+      <div class="status-copy"><strong id="statusStrong">还没开始</strong></div>
       <button class="finish-btn" type="button" id="finishBtn" disabled>记录本次</button>
     </div>
   </div>
@@ -836,7 +834,6 @@
         finishRow: $('finishRow'),
         finishBtn: $('finishBtn'),
         statusStrong: $('statusStrong'),
-        statusDetail: $('statusDetail'),
         toast: $('toast'),
         authModal: $('authModal'),
         authTitle: $('authTitle'),
@@ -1282,7 +1279,7 @@
         const locked = isTodayLocked();
         dom.finishRow.hidden = false;
         dom.dayTitle.textContent = plan.day;
-        dom.dayFocus.textContent = locked ? plan.focus + ' · 今日已记录' : plan.focus;
+        dom.dayFocus.textContent = plan.focus;
         dom.note.disabled = locked;
         dom.note.value = state.days[state.activeDay].note;
         dom.plan.innerHTML = plan.exercises.map(function (exercise, exerciseIndex) {
@@ -1312,39 +1309,24 @@
           return;
         }
 
-        // 今天已经提交过 -> 锁页，进度显示最终结果
-        const rec = getRecordByDate(todayKey());
-        if (rec) {
-          const pct = Number(rec.percent || 0);
-          dom.progressNumber.classList.remove('is-rest');
-          dom.progressNumber.textContent = pct + '%';
-          dom.progressFill.style.width = pct + '%';
-          dom.progressTrack.setAttribute('aria-valuenow', String(pct));
-          dom.finishBtn.disabled = true;
-          dom.finishBtn.textContent = '今日已记录';
-          dom.statusStrong.textContent = '今日已记录';
-          dom.statusDetail.textContent = '';   // 清空，否则会留着上一轮的文案
-          return;
-        }
+        // 今天提交过就只锁交互 —— 进度和状态文案照常显示，不切换成「今日已记录」
+        const locked = isTodayLocked();
 
         const count = countDay(state.activeDay);
         dom.progressNumber.classList.remove('is-rest');
         dom.progressNumber.textContent = count.percent + '%';
         dom.progressFill.style.width = count.percent + '%';
         dom.progressTrack.setAttribute('aria-valuenow', String(count.percent));
-        dom.finishBtn.disabled = count.done === 0;
+        dom.finishBtn.disabled = locked || count.done === 0;
         if (count.done === 0) {
           dom.finishBtn.textContent = '记录本次';
           dom.statusStrong.textContent = '还没开始';
-          dom.statusDetail.textContent = '完成任意一组后即可记录';
         } else if (count.done === count.total) {
           dom.finishBtn.textContent = '完成训练';
           dom.statusStrong.textContent = '今日计划全部完成';
-          dom.statusDetail.textContent = count.done + ' / ' + count.total + ' 组';
         } else {
           dom.finishBtn.textContent = '提前结束';
           dom.statusStrong.textContent = '已完成 ' + count.done + ' / ' + count.total;
-          dom.statusDetail.textContent = '还剩 ' + (count.total - count.done) + ' 组';
         }
       }
 
