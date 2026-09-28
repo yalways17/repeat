@@ -1323,7 +1323,7 @@
           dom.finishBtn.disabled = true;
           dom.finishBtn.textContent = '今日已记录';
           dom.statusStrong.textContent = '今日已记录';
-          dom.statusDetail.textContent = '明天 0 点后可再记';
+          dom.statusDetail.textContent = '';   // 清空，否则会留着上一轮的文案
           return;
         }
 
@@ -1635,6 +1635,8 @@
         saveState,
         getHistory,
         renderHistory,
+        renderPlan,
+        updateProgress,
         pushRecords,
         closeOutPastDays,
         isTodayLocked,
